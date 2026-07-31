@@ -5,7 +5,7 @@ import json
 from dotenv import load_dotenv
 from openai import OpenAI
 from prompts import system_prompt
-from call_function import available_functions
+from call_function import available_functions, call_function
 
 
 def main() -> None:
@@ -48,8 +48,14 @@ def generate_content(client: OpenAI, messages: list, verbose: bool) -> None:
     if message.tool_calls:
 
         for tool_call in message.tool_calls:
-            function_args = json.loads(tool_call.function.arguments or "{}")
-            print(f"Calling function: {tool_call.function.name}({function_args})")
+
+            result_message = call_function(tool_call, verbose)
+            
+            if result_message == None:
+                raise Exception("Error: no content from function call")
+
+            if verbose:
+                print(f"-> {result_message['content']}")
     
     else:
 
