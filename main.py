@@ -1,6 +1,7 @@
 import argparse
 import os
 import json
+import sys
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -28,10 +29,17 @@ def main() -> None:
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": args.user_prompt},
     ]
+    
     if args.verbose:
         print(f"User prompt: {args.user_prompt}\n")
 
-    generate_content(client, messages, args.verbose)
+    for iteration in range(1, 21):
+        if generate_content(client, messages, args.verbose):
+            break
+
+        if iteration == 20:
+            print(f"Error: it was not possible processing the user request")
+            sys.exit(1)
 
 
 def generate_content(client: OpenAI, messages: list, verbose: bool) -> None:
@@ -44,12 +52,14 @@ def generate_content(client: OpenAI, messages: list, verbose: bool) -> None:
         raise RuntimeError("API response appears to be malformed")
     
     message: str = response.choices[0].message
+    messages.append(message)
 
     if message.tool_calls:
 
         for tool_call in message.tool_calls:
 
             result_message = call_function(tool_call, verbose)
+            messages.append(result_message)
             
             if result_message == None:
                 raise Exception("Error: no content from function call")
@@ -64,6 +74,8 @@ def generate_content(client: OpenAI, messages: list, verbose: bool) -> None:
             print("Response tokens:", response.usage.completion_tokens)
         print("Response:")
         print(response.choices[0].message.content)
+
+        return True
 
 
 if __name__ == "__main__":
